@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+            background-color: #f4f4f4;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        .product-list, .cart {
+            margin-top: 20px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .product, .cart-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #fff;
+        }
+        .product span, .cart-item span {
+            flex-grow: 1;
+        }
+        .button {
+            padding: 5px 10px;
+            cursor: pointer;
+            color: black;
+        }
+        .remove-btn {
+            color: black;
+        }
+        input[type="number"] {
+            width: 50px;
+            padding: 5px;
+            margin-left: 10px;
+            border: 1px solid #ddd;
+        }
+        .total-amount {
+            font-weight: bold;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Shopping Cart</h1>
+
+    <h2>Available Products</h2>
+    <div class="product-list" id="productList"></div>
+
+    <h2>Your Cart</h2>
+    <div class="cart" id="cartList"></div>
+    <div class="total-amount" id="totalAmount">Total: Rs. 0</div>
+
+    <script>
+        const apiUrl = "http://localhost:5001";
+        const userId = 1;  
+
+        const fetchProducts = async () => {
+            const response = await fetch(`${apiUrl}/products`);
+            const products = await response.json();
+            const productList = document.getElementById("productList");
+            productList.innerHTML = products.map(product => `
+                <div class="product">
+                    <span>${product.Product_name} - Rs.${product.price}</span>
+                    <input type="number" id="quantity-${product.Product_ID}" value="1" min="1" max="${product.stock_quantity}">
+                    <button class="button" onclick="addToCart(${product.Product_ID}, ${product.price})">Add to Cart</button>
+                </div>
+            `).join('');
+        };
+
+        // Add product to cart
+        const addToCart = async (productId, price) => {
+            const quantity = document.getElementById(`quantity-${productId}`).value;
+            const response = await fetch(`${apiUrl}/add-to-cart`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userId,
+                    product_id: productId,
+                    quantity: quantity,
+                    price: price
+                })
+            });
+            alert(await response.text());
+            loadCart();
+        };
+
+        // Load cart items
+        const loadCart = async () => {
+            const response = await fetch(`${apiUrl}/cart/${userId}`);
+            const cartItems = await response.json();
+            const cartList = document.getElementById("cartList");
+            const totalAmountElement = document.getElementById("totalAmount");
+            
+            let totalAmount = 0;
+
+            cartList.innerHTML = cartItems.map(item => {
+                const itemTotal = item.quantity * item.price;
+                totalAmount += itemTotal;
+                return `
+                    <div class="cart-item">
+                        <span>${item.Product_name} - ${item.quantity} x Rs.${item.price} = Rs.${itemTotal}</span>
+                        <button class="button remove-btn" onclick="removeFromCart(${item.Cart_ID})">Remove</button>
+                    </div>
+                `;
+            }).join('');
+
+            totalAmountElement.textContent = `Total: Rs. ${totalAmount}`;
+        };
+
+        // Remove item from cart
+        const removeFromCart = async (cartId) => {
+            const response = await fetch(`${apiUrl}/remove-from-cart/${cartId}`, {
+                method: 'DELETE'
+            });
+            alert(await response.text());
+            loadCart();
+        };
+
+        fetchProducts();
+        loadCart();
+    </script>
+</body>
+</html>
